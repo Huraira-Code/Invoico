@@ -9,25 +9,26 @@ const client = new OpenAI({
     baseURL: process.env.GROQ_BASE_URL,
 });
 
-// ===============================
-// OCR FUNCTION (Vercel SAFE)
-// ===============================
+const axios = require("axios");
+
 const runOCR = async (imageUrl) => {
-    const Tesseract = (await import("tesseract.js/dist/tesseract.min.js")).default;
+    const response = await axios.post(
+        "https://api.ocr.space/parse/image",
+        null,
+        {
+            params: {
+                apikey: process.env.OCR_API_KEY || "helloworld",
+                url: imageUrl, // 👈 IMPORTANT: direct image URL
+                language: "eng",
+                isOverlayRequired: false,
+            },
+        }
+    );
 
-    const worker = await Tesseract.createWorker({
-        workerPath: "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js",
-        corePath: "https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.0/tesseract-core.wasm.js",
-    });
+    const text =
+        response.data?.ParsedResults?.[0]?.ParsedText || "";
 
-    await worker.loadLanguage("eng");
-    await worker.initialize("eng");
-
-    const { data } = await worker.recognize(imageUrl);
-
-    await worker.terminate();
-
-    return data.text;
+    return text;
 };
 // ===============================
 // 1. EXTRACT ONLY CONTROLLER
@@ -35,7 +36,7 @@ const runOCR = async (imageUrl) => {
 exports.extractInvoiceData = async (req, res) => {
     try {
         const file = req.file;
-
+        console.log(req.file)
         if (!file) {
             return res.status(400).json({
                 success: false,
@@ -43,8 +44,10 @@ exports.extractInvoiceData = async (req, res) => {
             });
         }
 
-        const extractedText = await runOCR(file.path);
+        // OCR STEP
+       
 
+        const extractedText = await runOCR(file.path);
         // AI EXTRACTION
         const response = await client.chat.completions.create({
             model: "llama-3.1-8b-instant",
