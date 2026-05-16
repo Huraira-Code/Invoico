@@ -12,23 +12,22 @@ const client = new OpenAI({
 // ===============================
 // OCR FUNCTION (Vercel SAFE)
 // ===============================
-const runOCR = async (imagePath) => {
-    const { createWorker } = await import("tesseract.js");
+const runOCR = async (imageUrl) => {
+    const Tesseract = (await import("tesseract.js/dist/tesseract.min.js")).default;
 
-    const worker = await createWorker({
+    const worker = await Tesseract.createWorker({
         workerPath: "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js",
         corePath: "https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.0/tesseract-core.wasm.js",
-        logger: () => { },
     });
 
     await worker.loadLanguage("eng");
     await worker.initialize("eng");
 
-    const result = await worker.recognize(imagePath);
+    const { data } = await worker.recognize(imageUrl);
 
     await worker.terminate();
 
-    return result.data.text;
+    return data.text;
 };
 // ===============================
 // 1. EXTRACT ONLY CONTROLLER
